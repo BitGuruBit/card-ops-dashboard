@@ -43,10 +43,13 @@ Only return the JSON array, no extra text.`
     })
 
     const data = await response.json()
+        console.log('OpenAI response status:', response.status)
+    console.log('OpenAI data:', JSON.stringify(data))
     const text = data.choices[0].message.content
     const ideas = JSON.parse(text)
     return NextResponse.json({ ideas })
-  } catch (err) {
-    return NextResponse.json({ error: 'Failed to generate ideas' }, { status: 500 })
+   } catch (err: any) {
+    console.error('OpenAI error:', err)
+    return NextResponse.json({ error: err.message || 'Failed to generate ideas' }, { status: 500 })
   }
 }
