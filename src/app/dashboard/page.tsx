@@ -14,8 +14,8 @@ export default async function DashboardPage() {
   ])
 
   const inv = inventory ?? []
-  const soldItems = inv.filter(i => i.status === 'sold')
-  const activeItems = inv.filter(i => i.status !== 'sold')
+  const soldItems = inv.filter((i: any) => i.status === 'sold')
+  const activeItems = inv.filter((i: any) => i.status !== 'sold')
   const totalRevenue = soldItems.reduce((s: number, i: any) => s + (i.sold_price ?? 0), 0)
   const totalCost = soldItems.reduce((s: number, i: any) => s + (i.cost ?? 0), 0)
   const estProfit = soldItems.reduce((s: number, i: any) => s + calcProfit(i.cost, i.sold_price), 0)
@@ -23,21 +23,19 @@ export default async function DashboardPage() {
   const roi = totalCost > 0 ? ((estProfit / totalCost) * 100).toFixed(1) : '0.0'
   const pendingTasks = (tasks ?? []).filter((t: any) => !t.completed).length
 
-  // Game breakdown
   const games = ['Pokemon', 'MTG', 'Yu-Gi-Oh']
   const gameBreakdown = games.map(game => ({
     game,
     count: inv.filter((i: any) => i.game === game).length,
-    value: inv.filter((i: any) => i.game === game)
-      .reduce((s: number, i: any) => s + ((i.listed_price ?? i.cost ?? 0) * (i.quantity ?? 1)), 0)
+    value: inv
+      .filter((i: any) => i.game === game)
+      .reduce((s: number, i: any) => s + ((i.listed_price ?? i.cost ?? 0) * (i.quantity ?? 1)), 0),
   }))
 
-  // Top cards by listed price
   const topCards = [...activeItems]
     .sort((a: any, b: any) => (b.listed_price ?? 0) - (a.listed_price ?? 0))
     .slice(0, 5)
 
-  // Profit by week (last 6 weeks)
   const now = new Date()
   const weeks = Array.from({ length: 6 }, (_, i) => {
     const weekStart = new Date(now)
@@ -55,9 +53,16 @@ export default async function DashboardPage() {
   })
   const maxProfit = Math.max(...weeks.map(w => w.profit), 1)
 
+  const gameColors: Record<string, string> = {
+    Pokemon: '#01696f',
+    MTG: '#964219',
+    'Yu-Gi-Oh': '#d19900',
+  }
+
   return (
     <AppShell>
       <div className="px-4 py-4 md:px-6 md:py-6 max-w-screen-xl mx-auto">
+
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-xl font-bold text-[#28251d]">Dashboard</h1>
@@ -65,13 +70,38 @@ export default async function DashboardPage() {
         </div>
 
         {/* Stat Cards */}
-        <div >
-          <StatCard label="Total Inventory" value={activeItems.className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6"reduce((s: number, i: any) => s + i.quantity, 0)} sub={`${inv.filter((i: any) => i.status === 'listed').length} listed`} />
-          <StatCard label="Inventory Value" value={formatCurrency(inventoryValue)} sub="at listed price" />
-          <StatCard label="Items Sold" value={soldItems.length} sub={`${formatCurrency(totalRevenue)} revenue`} />
-          <StatCard label="Est. Profit" value={formatCurrency(estProfit)} sub="after ~13% fees" accent />
-          <StatCard label="ROI" value={`${roi}%`} sub="return on cost" />
-          <StatCard label="Pending Tasks" value={pendingTasks} sub={`${(tasks ?? []).length} total`} />
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
+          <StatCard
+            label="Total Inventory"
+            value={activeItems.reduce((s: number, i: any) => s + (i.quantity ?? 1), 0)}
+            sub={`${inv.filter((i: any) => i.status === 'listed').length} listed`}
+          />
+          <StatCard
+            label="Inventory Value"
+            value={formatCurrency(inventoryValue)}
+            sub="at listed price"
+          />
+          <StatCard
+            label="Items Sold"
+            value={soldItems.length}
+            sub={`${formatCurrency(totalRevenue)} revenue`}
+          />
+          <StatCard
+            label="Est. Profit"
+            value={formatCurrency(estProfit)}
+            sub="after ~13% fees"
+            accent
+          />
+          <StatCard
+            label="ROI"
+            value={`${roi}%`}
+            sub="return on cost"
+          />
+          <StatCard
+            label="Pending Tasks"
+            value={pendingTasks}
+            sub={`${(tasks ?? []).length} total`}
+          />
         </div>
 
         {/* Charts Row */}
@@ -86,10 +116,15 @@ export default async function DashboardPage() {
               <div className="flex items-end gap-2 h-32">
                 {weeks.map((week, i) => (
                   <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                    <span className="text-xs text-[#7a7974] tabular-nums">{week.profit > 0 ? formatCurrency(week.profit) : ''}</span>
+                    <span className="text-xs text-[#7a7974] tabular-nums">
+                      {week.profit > 0 ? formatCurrency(week.profit) : ''}
+                    </span>
                     <div
                       className="w-full rounded-t-md bg-[#01696f] transition-all"
-                      style={{ height: `${Math.max((week.profit / maxProfit) * 96, week.profit > 0 ? 8 : 2)}px`, opacity: week.profit > 0 ? 1 : 0.15 }}
+                      style={{
+                        height: `${Math.max((week.profit / maxProfit) * 96, week.profit > 0 ? 8 : 2)}px`,
+                        opacity: week.profit > 0 ? 1 : 0.15,
+                      }}
                     />
                     <span className="text-xs text-[#7a7974]">{week.label}</span>
                   </div>
@@ -107,11 +142,6 @@ export default async function DashboardPage() {
               <div className="space-y-3">
                 {gameBreakdown.map(({ game, count, value }) => {
                   const pct = inv.length > 0 ? (count / inv.length) * 100 : 0
-                  const colors: Record<string, string> = {
-                    'Pokemon': '#01696f',
-                    'MTG': '#964219',
-                    'Yu-Gi-Oh': '#d19900'
-                  }
                   return (
                     <div key={game}>
                       <div className="flex justify-between text-xs mb-1">
@@ -121,7 +151,7 @@ export default async function DashboardPage() {
                       <div className="h-2 bg-[#f3f0ec] rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all"
-                          style={{ width: `${pct}%`, backgroundColor: colors[game] }}
+                          style={{ width: `${pct}%`, backgroundColor: gameColors[game] }}
                         />
                       </div>
                     </div>
@@ -158,7 +188,7 @@ export default async function DashboardPage() {
                             : <TrendingDown size={10} className="text-red-500" />
                           }
                           <p className={`text-xs tabular-nums ${profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                            {formatCurrency(profit)}
+                            {profit >= 0 ? '+' : ''}{formatCurrency(profit)}
                           </p>
                         </div>
                       </div>
@@ -176,29 +206,29 @@ export default async function DashboardPage() {
               <p className="text-sm text-[#7a7974] py-4 text-center">No active inventory</p>
             ) : (
               <div className="space-y-2">
-                {topCards.map((item: any, i: number) => (
-                  <div key={item.id} className="flex items-center justify-between py-2 border-b border-black/5 last:border-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-[#bab9b4] w-4">#{i + 1}</span>
-                      <div>
-                        <p className="text-sm font-medium text-[#28251d]">{item.card_name}</p>
-                        <p className="text-xs text-[#7a7974]">{item.game ?? 'TCG'} · {item.condition}</p>
-                      </div>
+                {topCards.map((item: any, idx: number) => (
+                  <div key={item.id} className="flex items-center gap-3 py-2 border-b border-black/5 last:border-0">
+                    <span className="text-xs font-bold text-[#bab9b4] w-4 shrink-0">{idx + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-[#28251d] truncate">{item.card_name}</p>
+                      <p className="text-xs text-[#7a7974]">{item.game} · {item.condition}</p>
                     </div>
-                    <p className="text-sm font-semibold tabular-nums text-[#01696f]">{formatCurrency(item.listed_price ?? item.cost)}</p>
+                    <p className="text-sm font-semibold tabular-nums text-[#28251d]">
+                      {formatCurrency(item.listed_price ?? item.cost ?? 0)}
+                    </p>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Tasks */}
+          {/* Recent Tasks */}
           <div className="bg-white rounded-xl border border-black/8 p-5">
-            <h2 className="text-sm font-semibold text-[#28251d] mb-4">Tasks</h2>
+            <h2 className="text-sm font-semibold text-[#28251d] mb-4">Recent Tasks</h2>
             {(tasks ?? []).length === 0 ? (
-              <p className="text-sm text-[#7a7974] py-4 text-center">No tasks yet!</p>
+              <p className="text-sm text-[#7a7974] py-4 text-center">No tasks yet</p>
             ) : (
-              <div className="space-y-1">
+              <div>
                 {(tasks ?? []).slice(0, 6).map((task: any) => (
                   <div key={task.id} className="flex items-start gap-3 py-2 border-b border-black/5 last:border-0">
                     {task.completed
@@ -206,14 +236,19 @@ export default async function DashboardPage() {
                       : <Square size={16} className="text-[#bab9b4] shrink-0 mt-0.5" />
                     }
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm ${task.completed ? 'line-through text-[#bab9b4]' : 'text-[#28251d]'}`}>{task.title}</p>
-                      {task.due_date && <p className="text-xs text-[#7a7974]">Due {formatDate(task.due_date)}</p>}
+                      <p className={`text-sm ${task.completed ? 'line-through text-[#bab9b4]' : 'text-[#28251d]'}`}>
+                        {task.title}
+                      </p>
+                      {task.due_date && (
+                        <p className="text-xs text-[#7a7974]">Due {formatDate(task.due_date)}</p>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
+
         </div>
       </div>
     </AppShell>
