@@ -57,7 +57,7 @@ export default async function DashboardPage() {
 
   return (
     <AppShell>
-      <div className="px-6 py-6 max-w-screen-xl mx-auto">
+      <div className="px-4 py-4 md:px-6 md:py-6 max-w-screen-xl mx-auto">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-xl font-bold text-[#28251d]">Dashboard</h1>
@@ -65,8 +65,8 @@ export default async function DashboardPage() {
         </div>
 
         {/* Stat Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
-          <StatCard label="Total Inventory" value={activeItems.reduce((s: number, i: any) => s + i.quantity, 0)} sub={`${inv.filter((i: any) => i.status === 'listed').length} listed`} />
+        <div >
+          <StatCard label="Total Inventory" value={activeItems.className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6"reduce((s: number, i: any) => s + i.quantity, 0)} sub={`${inv.filter((i: any) => i.status === 'listed').length} listed`} />
           <StatCard label="Inventory Value" value={formatCurrency(inventoryValue)} sub="at listed price" />
           <StatCard label="Items Sold" value={soldItems.length} sub={`${formatCurrency(totalRevenue)} revenue`} />
           <StatCard label="Est. Profit" value={formatCurrency(estProfit)} sub="after ~13% fees" accent />

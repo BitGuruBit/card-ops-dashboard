@@ -14,10 +14,10 @@ type SortField = 'card_name' | 'game' | 'cost' | 'listed_price' | 'sold_price' |
 type SortDir = 'asc' | 'desc'
 
 const GAME_COLORS: Record<string, string> = {
-  'Pokemon':   'bg-[#cedcd8] text-[#01696f]',
-  'MTG':       'bg-[#ddcfc6] text-[#964219]',
-  'Yu-Gi-Oh':  'bg-[#e9e0c6] text-[#d19900]',
-  'Other':     'bg-[#f3f0ec] text-[#7a7974]',
+  'Pokemon':  'bg-[#cedcd8] text-[#01696f]',
+  'MTG':      'bg-[#ddcfc6] text-[#964219]',
+  'Yu-Gi-Oh': 'bg-[#e9e0c6] text-[#d19900]',
+  'Other':    'bg-[#f3f0ec] text-[#7a7974]',
 }
 
 export default function InventoryTable({ items, userId }: { items: InventoryItem[], userId: string }) {
@@ -63,7 +63,6 @@ export default function InventoryTable({ items, userId }: { items: InventoryItem
       return 0
     })
 
-  // Summary stats
   const totalCost = filtered.reduce((s: number, i: any) => s + (i.cost ?? 0), 0)
   const totalListedValue = filtered.filter((i: any) => i.status !== 'sold').reduce((s: number, i: any) => s + ((i.listed_price ?? i.cost ?? 0) * (i.quantity ?? 1)), 0)
   const totalProfit = filtered.filter((i: any) => i.status === 'sold').reduce((s: number, i: any) => s + calcProfit(i.cost, i.sold_price), 0)
@@ -79,45 +78,110 @@ export default function InventoryTable({ items, userId }: { items: InventoryItem
   return (
     <>
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-5">
+      <div className="flex flex-col sm:flex-row gap-2 mb-4">
         <div className="relative flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#bab9b4]" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search cards or sets…"
-            className="w-full pl-8 pr-3 py-2 text-sm border border-black/12 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#01696f]/40" />
+            className="w-full pl-8 pr-3 py-2.5 text-sm border border-black/12 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#01696f]/40" />
         </div>
-        <select value={gameFilter} onChange={e => setGameFilter(e.target.value)}
-          className="px-3 py-2 text-sm border border-black/12 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#01696f]/40">
-          <option value="all">All Games</option>
-          {games.map(g => <option key={g}>{g}</option>)}
-        </select>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="px-3 py-2 text-sm border border-black/12 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#01696f]/40">
-          <option value="all">All Status</option>
-          <option value="in_stock">In Stock</option>
-          <option value="listed">Listed</option>
-          <option value="sold">Sold</option>
-        </select>
-        <Button onClick={() => setAddOpen(true)}><Plus size={14} /> Add Card</Button>
+        <div className="flex gap-2">
+          <select value={gameFilter} onChange={e => setGameFilter(e.target.value)}
+            className="flex-1 sm:flex-none px-3 py-2.5 text-sm border border-black/12 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#01696f]/40">
+            <option value="all">All Games</option>
+            {games.map(g => <option key={g}>{g}</option>)}
+          </select>
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+            className="flex-1 sm:flex-none px-3 py-2.5 text-sm border border-black/12 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#01696f]/40">
+            <option value="all">All Status</option>
+            <option value="in_stock">In Stock</option>
+            <option value="listed">Listed</option>
+            <option value="sold">Sold</option>
+          </select>
+          <Button onClick={() => setAddOpen(true)}><Plus size={14} /> Add</Button>
+        </div>
       </div>
 
       {/* Summary Bar */}
-      <div className="grid grid-cols-3 gap-4 mb-5">
-        <div className="bg-white rounded-xl border border-black/8 px-4 py-3">
-          <p className="text-xs text-[#7a7974]">Total Cost Basis</p>
-          <p className="text-base font-bold text-[#28251d] tabular-nums">{formatCurrency(totalCost)}</p>
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="bg-white rounded-xl border border-black/8 px-3 py-3 md:px-4">
+          <p className="text-xs text-[#7a7974]">Cost Basis</p>
+          <p className="text-sm md:text-base font-bold text-[#28251d] tabular-nums">{formatCurrency(totalCost)}</p>
         </div>
-        <div className="bg-white rounded-xl border border-black/8 px-4 py-3">
-          <p className="text-xs text-[#7a7974]">Active Inventory Value</p>
-          <p className="text-base font-bold text-[#28251d] tabular-nums">{formatCurrency(totalListedValue)}</p>
+        <div className="bg-white rounded-xl border border-black/8 px-3 py-3 md:px-4">
+          <p className="text-xs text-[#7a7974]">Active Value</p>
+          <p className="text-sm md:text-base font-bold text-[#28251d] tabular-nums">{formatCurrency(totalListedValue)}</p>
         </div>
-        <div className="bg-white rounded-xl border border-black/8 px-4 py-3">
-          <p className="text-xs text-[#7a7974]">Realized Profit</p>
-          <p className={`text-base font-bold tabular-nums ${totalProfit >= 0 ? 'text-green-600' : 'text-red-500'}`}>{formatCurrency(totalProfit)}</p>
+        <div className="bg-white rounded-xl border border-black/8 px-3 py-3 md:px-4">
+          <p className="text-xs text-[#7a7974]">Profit</p>
+          <p className={`text-sm md:text-base font-bold tabular-nums ${totalProfit >= 0 ? 'text-green-600' : 'text-red-500'}`}>{formatCurrency(totalProfit)}</p>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-black/8 overflow-hidden">
+      {/* ── MOBILE CARD LIST (below md) ── */}
+      <div className="md:hidden space-y-2">
+        {filtered.length === 0 ? (
+          <div className="bg-white rounded-xl border border-black/8 py-12 text-center">
+            <p className="text-sm font-medium text-[#7a7974] mb-1">No cards found</p>
+            <p className="text-xs text-[#bab9b4]">Try adjusting filters or add a card</p>
+          </div>
+        ) : filtered.map(item => {
+          const profit = calcProfit(item.cost, item.sold_price)
+          const game = (item as any).game ?? 'Other'
+          return (
+            <div key={item.id} className="bg-white rounded-xl border border-black/8 px-4 py-3">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-[#28251d] truncate">{item.card_name}</p>
+                  <p className="text-xs text-[#7a7974]">{item.set_name ?? '—'} · {item.condition} · Qty: {item.quantity}</p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => setEditItem(item)}
+                    className="p-2 rounded-lg hover:bg-[#f3f0ec] text-[#7a7974] hover:text-[#28251d] transition-colors" aria-label="Edit">
+                    <Pencil size={14} />
+                  </button>
+                  <button onClick={() => deleteItem(item.id)}
+                    className="p-2 rounded-lg hover:bg-red-50 text-[#7a7974] hover:text-red-600 transition-colors" aria-label="Delete">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${GAME_COLORS[game] ?? GAME_COLORS['Other']}`}>{game}</span>
+                <Badge value={item.status} />
+                {item.platform && <Badge value={item.platform} />}
+              </div>
+              <div className="flex items-center gap-4 text-xs">
+                <div>
+                  <span className="text-[#bab9b4]">Cost </span>
+                  <span className="font-semibold text-[#28251d] tabular-nums">{formatCurrency(item.cost)}</span>
+                </div>
+                {item.listed_price && item.status !== 'sold' && (
+                  <div>
+                    <span className="text-[#bab9b4]">Listed </span>
+                    <span className="font-semibold text-[#01696f] tabular-nums">{formatCurrency(item.listed_price)}</span>
+                  </div>
+                )}
+                {item.status === 'sold' && (
+                  <div>
+                    <span className="text-[#bab9b4]">Sold </span>
+                    <span className="font-semibold text-[#28251d] tabular-nums">{formatCurrency(item.sold_price)}</span>
+                  </div>
+                )}
+                {item.status === 'sold' && (
+                  <div>
+                    <span className="text-[#bab9b4]">Profit </span>
+                    <span className={`font-semibold tabular-nums ${profit >= 0 ? 'text-green-600' : 'text-red-500'}`}>{formatCurrency(profit)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+        <p className="text-xs text-[#7a7974] px-1 pt-1">{filtered.length} of {items.length} cards</p>
+      </div>
+
+      {/* ── DESKTOP TABLE (md and above) ── */}
+      <div className="hidden md:block bg-white rounded-xl border border-black/8 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -164,9 +228,7 @@ export default function InventoryTable({ items, userId }: { items: InventoryItem
                     <td className="px-4 py-3 font-medium text-[#28251d]">{item.card_name}</td>
                     <td className="px-4 py-3 text-[#7a7974] hidden md:table-cell">{item.set_name ?? '—'}</td>
                     <td className="px-4 py-3 hidden lg:table-cell">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${GAME_COLORS[game] ?? GAME_COLORS['Other']}`}>
-                        {game}
-                      </span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${GAME_COLORS[game] ?? GAME_COLORS['Other']}`}>{game}</span>
                     </td>
                     <td className="px-4 py-3"><Badge value={item.condition} /></td>
                     <td className="px-4 py-3 text-right tabular-nums text-[#28251d] hidden sm:table-cell">{item.quantity}</td>
