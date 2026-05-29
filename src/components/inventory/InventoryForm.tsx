@@ -5,9 +5,10 @@ import Button from '@/components/ui/Button'
 import { createClient } from '@/lib/supabase/client'
 import type { InventoryItem } from '@/types'
 
-const CONDITIONS = ['NM', 'LP', 'MP', 'HP', 'DMG']
+const CONDITIONS = ['NM', 'LP', 'MP', 'HP', 'DMG', 'PSA 10', 'PSA 9', 'PSA 8', 'BGS 10', 'BGS 9.5', 'BGS 9']
 const PLATFORMS  = ['eBay', 'TCGPlayer', 'Facebook', 'Local', 'Other']
 const STATUSES   = ['in_stock', 'listed', 'sold']
+const GAMES      = ['Pokemon', 'MTG', 'Yu-Gi-Oh', 'Other']
 
 interface Props {
   userId: string
@@ -22,6 +23,7 @@ export default function InventoryForm({ userId, item, onSuccess }: Props) {
   const [form, setForm] = useState({
     card_name:    item?.card_name    ?? '',
     set_name:     item?.set_name     ?? '',
+    game:         (item as any)?.game ?? 'Pokemon',
     condition:    item?.condition    ?? 'NM',
     quantity:     item?.quantity     ?? 1,
     cost:         item?.cost         ?? 0,
@@ -46,6 +48,7 @@ export default function InventoryForm({ userId, item, onSuccess }: Props) {
       user_id:      userId,
       card_name:    form.card_name,
       set_name:     form.set_name || null,
+      game:         form.game,
       condition:    form.condition,
       quantity:     Number(form.quantity),
       cost:         Number(form.cost),
@@ -69,6 +72,12 @@ export default function InventoryForm({ userId, item, onSuccess }: Props) {
           <Input label="Card Name *" value={form.card_name} onChange={update('card_name')} required placeholder="e.g. Charizard VMAX" />
         </div>
         <Input label="Set" value={form.set_name} onChange={update('set_name')} placeholder="e.g. Evolving Skies" />
+        <div>
+          <label className="block text-sm font-medium text-[#28251d] mb-1.5">Game</label>
+          <select value={form.game} onChange={update('game')} className="w-full px-3 py-2 text-sm border border-black/12 rounded-lg bg-[#f9f8f5] focus:outline-none focus:ring-2 focus:ring-[#01696f]/40">
+            {GAMES.map(g => <option key={g}>{g}</option>)}
+          </select>
+        </div>
         <div>
           <label className="block text-sm font-medium text-[#28251d] mb-1.5">Condition</label>
           <select value={form.condition} onChange={update('condition')} className="w-full px-3 py-2 text-sm border border-black/12 rounded-lg bg-[#f9f8f5] focus:outline-none focus:ring-2 focus:ring-[#01696f]/40">
