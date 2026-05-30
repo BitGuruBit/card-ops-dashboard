@@ -1,11 +1,12 @@
 'use client'
 import { useState } from 'react'
-import { Plus, Search, Pencil, Trash2, ChevronUp, ChevronDown } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, ChevronUp, ChevronDown, ScanLine } from 'lucide-react'
 import type { InventoryItem } from '@/types'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import InventoryForm from './InventoryForm'
+import CardScanner from './CardScanner'
 import { formatCurrency, calcProfit } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -30,6 +31,7 @@ export default function InventoryTable({ items, userId }: { items: InventoryItem
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [addOpen, setAddOpen] = useState(false)
   const [editItem, setEditItem] = useState<InventoryItem | null>(null)
+  const [scanOpen, setScanOpen] = useState(false)
 
   function handleSort(field: SortField) {
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -84,7 +86,7 @@ export default function InventoryTable({ items, userId }: { items: InventoryItem
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search cards or sets…"
             className="w-full pl-8 pr-3 py-2.5 text-sm border border-black/12 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#01696f]/40" />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <select value={gameFilter} onChange={e => setGameFilter(e.target.value)}
             className="flex-1 sm:flex-none px-3 py-2.5 text-sm border border-black/12 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#01696f]/40">
             <option value="all">All Games</option>
@@ -97,7 +99,12 @@ export default function InventoryTable({ items, userId }: { items: InventoryItem
             <option value="listed">Listed</option>
             <option value="sold">Sold</option>
           </select>
-          <Button onClick={() => setAddOpen(true)}><Plus size={14} /> Add</Button>
+          <Button onClick={() => setScanOpen(true)} variant="secondary">
+            <ScanLine size={14} /> Scan Cards
+          </Button>
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus size={14} /> Add
+          </Button>
         </div>
       </div>
 
@@ -262,6 +269,9 @@ export default function InventoryTable({ items, userId }: { items: InventoryItem
       </Modal>
       <Modal open={!!editItem} onClose={() => setEditItem(null)} title="Edit Card">
         {editItem && <InventoryForm userId={userId} item={editItem} onSuccess={() => { setEditItem(null); router.refresh() }} />}
+      </Modal>
+      <Modal open={scanOpen} onClose={() => setScanOpen(false)} title="Scan Cards">
+        <CardScanner userId={userId} onSuccess={() => { setScanOpen(false); router.refresh() }} />
       </Modal>
     </>
   )
