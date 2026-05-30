@@ -1,9 +1,10 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import { createClient } from '@/lib/supabase/client'
 import type { InventoryItem } from '@/types'
+import { Loader2, ImageOff } from 'lucide-react'
 
 const CONDITIONS = ['NM', 'LP', 'MP', 'HP', 'DMG', 'PSA 10', 'PSA 9', 'PSA 8', 'BGS 10', 'BGS 9.5', 'BGS 9']
 const PLATFORMS  = ['eBay', 'TCGPlayer', 'Facebook', 'Local', 'Other']
@@ -20,6 +21,10 @@ export default function InventoryForm({ userId, item, onSuccess }: Props) {
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [imageUrl, setImageUrl] = useState<string | null>((item as any)?.image_url ?? null)
+  const [imageLookingUp, setImageLookingUp] = useState(false)
+  const lookupTimer = useRef<NodeJS.Timeout>()
+
   const [form, setForm] = useState({
     card_name:    item?.card_name    ?? '',
     set_name:     item?.set_name     ?? '',
@@ -40,6 +45,34 @@ export default function InventoryForm({ userId, item, onSuccess }: Props) {
     }
   }
 
+  // Auto-fetch image when card_name or set_name changes (debounced)
+  useEffect(() => {
+    if (!form.card_name || form.card_name.length < 3) return
+    clearTimeout(lookupTimer.current)
+    lookupTimer.current = setTimeout(async () => {
+      setImageLookingUp(true)
+      try {
+        const res = await fetch('/api/price-lookup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            card_name: form.card_name,
+            set_name: form.set_name || null,
+            card_number: null,
+            game: form.game,
+          }),
+        })
+        const data = await res.json()
+        if (data.image_url) setImageUrl(data.image_url)
+        if (data.price && !form.listed_price) {
+          setForm(f => ({ ...f, listed_price: String(data.price) }))
+        }
+      } catch {}
+      setImageLookingUp(false)
+    }, 800)
+    return () => clearTimeout(lookupTimer.current)
+  }, [form.card_name, form.set_name, form.game])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
@@ -57,6 +90,7 @@ export default function InventoryForm({ userId, item, onSuccess }: Props) {
       platform:     form.platform || null,
       status:       form.status,
       notes:        form.notes || null,
+      image_url:    imageUrl ?? null,
     }
     const { error } = item
       ? await supabase.from('inventory').update(payload).eq('id', item.id)
@@ -68,6 +102,24 @@ export default function InventoryForm({ userId, item, onSuccess }: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
+
+        {/* Card preview image */}
+        <div className="col-span-2 flex items-center gap-4">
+          <div className="w-16 h-22 rounded-lg border border-black/8 bg-[#f9f8f5] flex items-center justify-center shrink-0 overflow-hidden">
+            {imageLookingUp ? (
+              <Loader2 size={16} className="animate-spin text-[#01696f]" />
+            ) : imageUrl ? (
+              <img src={imageUrl} alt="card" className="w-full h-full object-contain" />
+            ) : (
+              <ImageOff size={16} className="text-[#bab9b4]" />
+            )}
+          </div>
+          <div className="flex-1">
+            <p className="text-xs text-[#7a7974]">Card image auto-loads as you type</p>
+            {imageUrl && <p className="text-xs text-[#01696f] mt-0.5">✓ Image found</p>}
+          </div>
+        </div>
+
         <div className="col-span-2">
           <Input label="Card Name *" value={form.card_name} onChange={update('card_name')} required placeholder="e.g. Charizard VMAX" />
         </div>
@@ -86,7 +138,7 @@ export default function InventoryForm({ userId, item, onSuccess }: Props) {
         </div>
         <Input label="Quantity" type="number" min="0" value={form.quantity} onChange={update('quantity')} />
         <Input label="Your Cost ($) *" type="number" step="0.01" min="0" value={form.cost} onChange={update('cost')} required />
-        <Input label="Listed Price ($)" type="number" step="0.01" min="0" value={form.listed_price} onChange={update('listed_price')} placeholder="Optional" />
+        <Input label="Listed Price ($)" type="number" step="0.01" min="0" value={form.listed_price} onChange={update('listed_price')} placeholder="Auto-filled" />
         <Input label="Sold Price ($)" type="number" step="0.01" min="0" value={form.sold_price} onChange={update('sold_price')} placeholder="Optional" />
         <div>
           <label className="block text-sm font-medium text-[#28251d] mb-1.5">Platform</label>
