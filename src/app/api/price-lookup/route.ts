@@ -2,89 +2,50 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   const { card_name, set_name, card_number, game } = await req.json()
+  if (!card_name) return NextResponse.json({ error: 'card_name required' }, { status: 400 })
+
+  const apiKey = process.env.POKEMON_TCG_API_KEY ?? ''
+  const headers: HeadersInit = apiKey ? { 'X-Api-Key': apiKey } : {}
 
   try {
-    let price = null
-    let image_url = null
-    let matched_set = null
+    if (game === 'Pokemon' || !game) {
+      // Build query — try card number first for precision, fall back to name
+      const nameQ = `name:"${card_name}"`
+      const setQ  = set_name ? ` set.name:"${set_name}"` : ''
+      const numQ  = card_number ? ` number:${card_number.replace(/[^0-9a-zA-Z]/g, '')}` : ''
+      const query = encodeURIComponent(nameQ + setQ + numQ)
 
-    // ── POKEMON ──────────────────────────────────────────
-    if (game === 'Pokemon') {
-      let query = `name:"${card_name}"`
-
-      // If we have a card number, use it for precise lookup
-      if (card_number) {
-        const num = card_number.split('/')[0]?.trim()
-        if (num) query += ` number:${num}`
-      }
-
-      const res = await fetch(
-        `https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(query)}&pageSize=5&orderBy=-set.releaseDate`,
-        { headers: { 'X-Api-Key': process.env.POKEMON_TCG_API_KEY ?? '' } }
-      )
+      const res  = await fetch(`https://api.pokemontcg.io/v2/cards?q=${query}&pageSize=8&orderBy=-set.releaseDate`, { headers })
       const data = await res.json()
 
-      if (data.data?.length > 0) {
-        // Try to match set name if provided
-        let card = data.data[0]
-        if (set_name) {
-          const match = data.data.find((c: any) =>
-            c.set?.name?.toLowerCase().includes(set_name.toLowerCase()) ||
-            set_name.toLowerCase().includes(c.set?.name?.toLowerCase())
-          )
-          if (match) card = match
-        }
+      if (data.data?.length) {
+        // Return top 5 candidates for picker
+        const candidates = data.data.slice(0, 5).map((c: any) => ({
+          id:        c.id,
+          card_name: c.name,
+          set_name:  c.set?.name ?? null,
+          card_number: c.number,
+          image_url: c.images?.large ?? c.images?.small ?? null,
+          price:     c.tcgplayer?.prices?.holofoil?.market
+                  ?? c.tcgplayer?.prices?.normal?.market
+                  ?? c.tcgplayer?.prices?.reverseHolofoil?.market
+                  ?? c.tcgplayer?.prices?.['1stEditionHolofoil']?.market
+                  ?? null,
+        }))
 
-        price = card.tcgplayer?.prices?.holofoil?.market
-          ?? card.tcgplayer?.prices?.reverseHolofoil?.market
-          ?? card.tcgplayer?.prices?.normal?.market
-          ?? card.tcgplayer?.prices?.['1stEditionHolofoil']?.market
-          ?? card.cardmarket?.prices?.averageSellPrice
-          ?? null
-
-        image_url = card.images?.large ?? card.images?.small ?? null
-        matched_set = card.set?.name ?? null
+        return NextResponse.json({
+          // First candidate for auto-fill compatibility
+          price:       candidates[0].price,
+          image_url:   candidates[0].image_url,
+          matched_set: candidates[0].set_name,
+          // All candidates for picker
+          candidates,
+        })
       }
     }
 
-    // ── MTG ──────────────────────────────────────────────
-    else if (game === 'MTG') {
-      let url = `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(card_name)}`
-      if (set_name) url += `&set=${encodeURIComponent(set_name)}`
-
-      const res = await fetch(url)
-      const card = await res.json()
-
-      if (card.object !== 'error') {
-        price = card.prices?.usd ? parseFloat(card.prices.usd) : null
-        image_url = card.image_uris?.normal
-          ?? card.card_faces?.[0]?.image_uris?.normal
-          ?? null
-        matched_set = card.set_name ?? null
-      }
-    }
-
-    // ── YU-GI-OH ─────────────────────────────────────────
-    else if (game === 'Yu-Gi-Oh') {
-      const res = await fetch(
-        `https://db.ygoprodeck.com/api/v7/cardinfo.php?name=${encodeURIComponent(card_name)}`
-      )
-      const data = await res.json()
-
-      if (data.data?.length > 0) {
-        const card = data.data[0]
-        price = card.card_prices?.[0]?.tcgplayer_price
-          ? parseFloat(card.card_prices[0].tcgplayer_price)
-          : null
-        image_url = card.card_images?.[0]?.image_url ?? null
-        matched_set = set_name ?? null
-      }
-    }
-
-    return NextResponse.json({ price, image_url, matched_set })
-
-  } catch (err: any) {
-    console.error('Price lookup error:', err)
-    return NextResponse.json({ price: null, image_url: null, matched_set: null })
+    return NextResponse.json({ price: null, image_url: null, candidates: [] })
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 })
   }
 }
